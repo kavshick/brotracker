@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth }     from '../context/AuthContext'
 import { useSchedule } from '../hooks/useSchedule'
 import { fmtTime }     from '../utils/scheduleUtils'
+import { readApiResponse } from '../utils/api'
 import s from './AdminDashboard.module.css'
 
 const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
@@ -36,12 +37,13 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ schedule: sched })
       })
-      if (res.status === 401) { logout(); nav('/admin'); return }
-      if (!res.ok) throw new Error()
-      const data = await res.json()
+      const data = await readApiResponse(res, 'Save failed')
       setSchedule(data.schedule); refetch()
       showToast('✓ SCHEDULE UPDATED')
-    } catch { showToast('✗ SAVE FAILED', 'error') }
+    } catch (err) {
+      if (err.status === 401) { logout(); nav('/admin'); return }
+      showToast(`✗ ${err.message.toUpperCase()}`, 'error')
+    }
     finally { setSaving(false) }
   }
 
@@ -50,11 +52,13 @@ export default function AdminDashboard() {
       setResetting(true)
       try {
         const res = await fetch('/api/admin/schedule/reset', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
-        if (!res.ok) throw new Error()
-        const data = await res.json()
+        const data = await readApiResponse(res, 'Reset failed')
         setSchedule(data.schedule); refetch()
         showToast('✓ SCHEDULE RESET')
-      } catch { showToast('✗ RESET FAILED', 'error') }
+      } catch (err) {
+        if (err.status === 401) { logout(); nav('/admin'); return }
+        showToast(`✗ ${err.message.toUpperCase()}`, 'error')
+      }
       finally { setResetting(false); setConfirm(null) }
     }})
   }

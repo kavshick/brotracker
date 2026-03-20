@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { readApiResponse } from '../utils/api'
 
 // Fallback schedule if backend is unreachable
 const FALLBACK = [
@@ -20,12 +21,13 @@ export function useSchedule() {
   const fetch_ = useCallback(async () => {
     try {
       const res  = await fetch('/api/schedule')
-      if (!res.ok) throw new Error('Server error')
-      const data = await res.json()
+      const data = await readApiResponse(res, 'Server error')
       setSchedule(data.schedule)
       setUpdatedAt(data.updatedAt)
+      setError(null)
       setOffline(false)
-    } catch {
+    } catch (err) {
+      setError(err.message)
       setOffline(true)
       // Keep last known schedule (or fallback)
     } finally {
