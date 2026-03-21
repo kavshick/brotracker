@@ -19,30 +19,41 @@ function getStorageMode() {
 }
 
 async function readPublicSchedule() {
-  const response = await fetch(PUBLIC_BLOB_URL, {
-    cache: 'no-store',
-    headers: { accept: 'application/json' },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 
-  if (response.status === 404) {
-    return null;
+  try {
+    const response = await fetch(PUBLIC_BLOB_URL, {
+      cache: 'no-store',
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Public blob fetch failed with status ${response.status}`);
+    }
+
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  if (!response.ok) {
-    throw new Error(`Public blob fetch failed with status ${response.status}`);
-  }
-
-  return await response.json();
 }
 
 async function readScheduleWithSdk() {
-  const blob = await get(BLOB_KEY, { access: BLOB_ACCESS });
-
-  if (!blob || blob.statusCode === 404) {
-    return null;
+  try {
+    const blob = await get(BLOB_KEY, { access: BLOB_ACCESS });
+    return JSON.parse(await blob.text());
+  } catch (error) {
+    // Blob doesn't exist or other error
+    if (error.code === 'BLOB_NOT_FOUND' || error.message?.includes('not found')) {
+      return null;
+    }
+    throw error;
   }
-
-  return JSON.parse(await blob.text());
 }
 
 async function writeSchedule(schedule) {
@@ -57,26 +68,47 @@ async function writeSchedule(schedule) {
 }
 
 async function loadSchedule() {
-  try {
-    const schedule = BLOB_ACCESS === 'public' && PUBLIC_BLOB_URL
-      ? await readPublicSchedule()
-      : await readScheduleWithSdk();
+  let lastError = null;
 
-    if (!schedule) {
-      console.log('Blob not found, initializing with default schedule');
-      try {
-        await writeSchedule(DEFAULT_SCHEDULE);
-      } catch (writeError) {
-        console.error('Failed to initialize Blob with default schedule:', writeError);
+  // Try SDK first if not explicitly using public mode
+  if (BLOB_ACCESS !== 'public') {
+    try {
+      console.log('Attempting to load schedule from Blob SDK...');
+      const schedule = await readScheduleWithSdk();
+      if (schedule) {
+        console.log('Successfully loaded schedule from Blob SDK');
+        return schedule;
       }
-      return DEFAULT_SCHEDULE;
+    } catch (error) {
+      console.warn('Failed to load from Blob SDK:', error.message);
+      lastError = error;
     }
-
-    return schedule;
-  } catch (error) {
-    console.error('Failed to load from Blob:', error);
-    return DEFAULT_SCHEDULE;
   }
+
+  // Try public fetch if configured
+  if (PUBLIC_BLOB_URL) {
+    try {
+      console.log('Attempting to load schedule from public Blob URL...');
+      const schedule = await readPublicSchedule();
+      if (schedule) {
+        console.log('Successfully loaded schedule from public Blob URL');
+        return schedule;
+      }
+    } catch (error) {
+      console.warn('Failed to load from public Blob URL:', error.message);
+      lastError = error;
+    }
+  }
+
+  // Fall back to default
+  console.log('Blob not found or unreachable, initializing with default schedule');
+  try {
+    await writeSchedule(DEFAULT_SCHEDULE);
+  } catch (writeError) {
+    console.error('Failed to initialize Blob with default schedule:', writeError.message);
+  }
+
+  return DEFAULT_SCHEDULE;
 }
 
 async function saveSchedule(schedule) {
