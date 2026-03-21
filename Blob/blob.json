@@ -1,0 +1,8 @@
+[
+  { "id": 1, "day": 1, "dayName": "Monday", "startH": 12, "startM": 0, "endH": 7, "endM": 0, "overnight": true, "active": true },
+  { "id": 2, "day": 2, "dayName": "Tuesday", "startH": 17, "startM": 0, "endH": 23, "endM": 0, "overnight": false, "active": true },
+  { "id": 3, "day": 3, "dayName": "Wednesday", "startH": 17, "startM": 0, "endH": 23, "endM": 0, "overnight": false, "active": true },
+  { "id": 4, "day": 4, "dayName": "Thursday", "startH": 16, "startM": 30, "endH": 21, "endM": 30, "overnight": false, "active": true },
+  { "id": 5, "day": 5, "dayName": "Friday", "startH": 13, "startM": 0, "endH": 19, "endM": 0, "overnight": false, "active": true },
+  { "id": 6, "day": 6, "dayName": "Saturday", "startH": 7, "startM": 0, "endH": 15, "endM": 0, "overnight": false, "active": true }
+]
