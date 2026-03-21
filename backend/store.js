@@ -1,6 +1,6 @@
 const { put, get } = require('@vercel/blob');
 
-const BLOB_KEY = 'brotracker-schedule.json';
+const BLOB_KEY = 'blob.json';
 
 const DEFAULT_SCHEDULE = [
   { id: 1, day: 1, dayName: 'Monday', startH: 12, startM: 0, endH: 7, endM: 0, overnight: true, active: true },
@@ -11,6 +11,8 @@ const DEFAULT_SCHEDULE = [
   { id: 6, day: 6, dayName: 'Saturday', startH: 7, startM: 0, endH: 15, endM: 0, overnight: false, active: true },
 ];
 
+let initialized = false;
+
 function getStorageMode() {
   return 'blob';
 }
@@ -18,9 +20,13 @@ function getStorageMode() {
 async function loadSchedule() {
   try {
     const blob = await get(BLOB_KEY, { access: 'private' });
+    
     if (!blob) {
+      console.log('Blob not found, initializing with default schedule');
+      await put(BLOB_KEY, JSON.stringify(DEFAULT_SCHEDULE, null, 2), { access: 'private' });
       return DEFAULT_SCHEDULE;
     }
+    
     const text = await blob.text();
     return JSON.parse(text);
   } catch (error) {
