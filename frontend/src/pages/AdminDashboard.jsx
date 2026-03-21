@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth }     from '../context/AuthContext'
+import { Link } from 'react-router-dom'
 import { useSchedule } from '../hooks/useSchedule'
 import { fmtTime }     from '../utils/scheduleUtils'
 import { readApiResponse } from '../utils/api'
@@ -11,9 +10,7 @@ const DAY_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','S
 const EMPTY = { day: 0, dayName: 'Sunday', startH: 9, startM: 0, endH: 17, endM: 0, overnight: false, active: true }
 
 export default function AdminDashboard() {
-  const { token, adminUser, logout } = useAuth()
   const { schedule: remote, refetch } = useSchedule()
-  const nav = useNavigate()
 
   const [schedule, setSchedule]   = useState(null)
   const [saving,   setSaving]     = useState(false)
@@ -34,14 +31,13 @@ export default function AdminDashboard() {
     try {
       const res = await fetch('/api/admin/schedule', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ schedule: sched })
       })
       const data = await readApiResponse(res, 'Save failed')
       setSchedule(data.schedule); refetch()
       showToast('✓ SCHEDULE UPDATED')
     } catch (err) {
-      if (err.status === 401) { logout(); nav('/admin'); return }
       showToast(`✗ ${err.message.toUpperCase()}`, 'error')
     }
     finally { setSaving(false) }
@@ -51,12 +47,11 @@ export default function AdminDashboard() {
     setConfirm({ msg: 'RESET TO DEFAULT SCHEDULE?', onOk: async () => {
       setResetting(true)
       try {
-        const res = await fetch('/api/admin/schedule/reset', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch('/api/admin/schedule/reset', { method: 'POST' })
         const data = await readApiResponse(res, 'Reset failed')
         setSchedule(data.schedule); refetch()
         showToast('✓ SCHEDULE RESET')
       } catch (err) {
-        if (err.status === 401) { logout(); nav('/admin'); return }
         showToast(`✗ ${err.message.toUpperCase()}`, 'error')
       }
       finally { setResetting(false); setConfirm(null) }
@@ -102,13 +97,13 @@ export default function AdminDashboard() {
       <aside className={s.sidebar}>
         <div className={s.sideHeader}>
           <div className={s.sideLogo}>◈ BROTRACKER</div>
-          <div className={s.sideVer}>ADMIN v2.0</div>
+          <div className={s.sideVer}>SCHEDULE v2.0</div>
         </div>
         <div className={s.sideUser}>
           <div className={s.sideUserIcon}>🛡</div>
           <div>
-            <div className={s.sideUsername}>{adminUser}</div>
-            <div className={s.sideRole}>ADMINISTRATOR</div>
+            <div className={s.sideUsername}>Schedule Console</div>
+            <div className={s.sideRole}>BACKEND CONNECTED</div>
           </div>
           <div className={s.sideOnline} />
         </div>
@@ -120,9 +115,9 @@ export default function AdminDashboard() {
             <span className={s.navIcon}>◉</span> LIVE VIEW
           </Link>
         </nav>
-        <button className={`btn btn-danger btn-sm ${s.logoutBtn}`} onClick={logout}>
-          ◈ LOGOUT
-        </button>
+        <Link to="/" className={`btn btn-ghost btn-sm ${s.logoutBtn}`}>
+          ◈ RETURN HOME
+        </Link>
       </aside>
 
       {/* main */}

@@ -122,7 +122,27 @@
   letter-spacing: 2px;
   animation: neonBreath 1s infinite;
 }
-.adminBtn { clip-path: none; border-radius: 2px; }
+
+.scheduleDot {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #9ffef9 0%, var(--neon-cyan) 45%, #042c33 100%);
+  box-shadow: 0 0 0 1px rgba(0, 255, 245, .24), 0 0 12px rgba(0, 255, 245, .45), 0 0 24px rgba(0, 255, 245, .22);
+  opacity: .55;
+  z-index: 20;
+  transition: transform .2s ease, opacity .2s ease, box-shadow .2s ease;
+}
+
+.scheduleDot:hover,
+.scheduleDot:focus-visible {
+  opacity: 1;
+  transform: scale(1.18);
+  box-shadow: 0 0 0 1px rgba(0, 255, 245, .44), 0 0 14px rgba(0, 255, 245, .75), 0 0 28px rgba(0, 255, 245, .35);
+}
 
 /* ── Main Grid ── */
 .mainGrid {

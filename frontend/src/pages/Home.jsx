@@ -104,7 +104,7 @@ function GlitchText({ children, className }) {
 function DataTicker() {
   const items = [
     'SYS:ONLINE', 'PING:OK', 'TIMEZONE:IST+9.5/EST', 'REFRESH:1S',
-    'SCHEDULE:SYNCED', 'UPTIME:99.9%', 'SIGNAL:STRONG', 'JWT:ACTIVE',
+    'SCHEDULE:SYNCED', 'UPTIME:99.9%', 'SIGNAL:STRONG', 'BACKEND:LIVE',
   ]
   const doubled = [...items, ...items]
   return (
@@ -173,7 +173,6 @@ export default function Home() {
         </div>
         <div className={s.headerRight}>
           {offline && <span className={s.offlineTag}>⚡ OFFLINE MODE</span>}
-          <Link to="/admin" className={`btn btn-ghost btn-sm ${s.adminBtn}`}>⚙ ADMIN</Link>
         </div>
       </header>
 
@@ -325,6 +324,8 @@ export default function Home() {
         <span>REFRESH: 1S &nbsp;·&nbsp; SCHEDULE SYNC: 60S</span>
         <span>🇮🇳 TN → ON 🇨🇦</span>
       </footer>
+
+      <Link to="/schedule" className={s.scheduleDot} aria-label="Open schedule editor" title="Open schedule editor" />
     </div>
   )
 }
