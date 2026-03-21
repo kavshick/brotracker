@@ -1,9 +1,9 @@
 const { put, get } = require('@vercel/blob');
 
 const BLOB_KEY = 'blob.json';
-const DEFAULT_PUBLIC_BLOB_URL = 'https://vczoykhczwbxmyjc.public.blob.vercel-storage.com/blob.json';
-const BLOB_ACCESS = process.env.BLOB_ACCESS || 'public';
-const PUBLIC_BLOB_URL = process.env.BLOB_PUBLIC_URL || DEFAULT_PUBLIC_BLOB_URL;
+const DEFAULT_PRIVATE_BLOB_URL = 'https://uthm6wuitdkn5hsp.private.blob.vercel-storage.com/blob.json';
+const BLOB_ACCESS = process.env.BLOB_ACCESS || 'private';
+const PRIVATE_BLOB_URL = process.env.BLOB_PRIVATE_URL || DEFAULT_PRIVATE_BLOB_URL;
 
 const DEFAULT_SCHEDULE = [
   { id: 1, day: 1, dayName: 'Monday', startH: 12, startM: 0, endH: 7, endM: 0, overnight: true, active: true },
@@ -18,12 +18,12 @@ function getStorageMode() {
   return `blob-${BLOB_ACCESS}`;
 }
 
-async function readPublicSchedule() {
+async function readPrivateSchedule() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
 
   try {
-    const response = await fetch(PUBLIC_BLOB_URL, {
+    const response = await fetch(PRIVATE_BLOB_URL, {
       cache: 'no-store',
       headers: { accept: 'application/json' },
       signal: controller.signal,
@@ -34,7 +34,7 @@ async function readPublicSchedule() {
     }
 
     if (!response.ok) {
-      throw new Error(`Public blob fetch failed with status ${response.status}`);
+      throw new Error(`Private blob fetch failed with status ${response.status}`);
     }
 
     return await response.json();
@@ -70,8 +70,8 @@ async function writeSchedule(schedule) {
 async function loadSchedule() {
   let lastError = null;
 
-  // Try SDK first if not explicitly using public mode
-  if (BLOB_ACCESS !== 'public') {
+  // Try SDK first if using private mode
+  if (BLOB_ACCESS === 'private') {
     try {
       console.log('Attempting to load schedule from Blob SDK...');
       const schedule = await readScheduleWithSdk();
@@ -85,17 +85,17 @@ async function loadSchedule() {
     }
   }
 
-  // Try public fetch if configured
-  if (PUBLIC_BLOB_URL) {
+  // Try private fetch as fallback
+  if (PRIVATE_BLOB_URL) {
     try {
-      console.log('Attempting to load schedule from public Blob URL...');
-      const schedule = await readPublicSchedule();
+      console.log('Attempting to load schedule from private Blob URL...');
+      const schedule = await readPrivateSchedule();
       if (schedule) {
-        console.log('Successfully loaded schedule from public Blob URL');
+        console.log('Successfully loaded schedule from private Blob URL');
         return schedule;
       }
     } catch (error) {
-      console.warn('Failed to load from public Blob URL:', error.message);
+      console.warn('Failed to load from private Blob URL:', error.message);
       lastError = error;
     }
   }
