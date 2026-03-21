@@ -32,7 +32,7 @@ async function readPublicSchedule() {
     throw new Error(`Public blob fetch failed with status ${response.status}`);
   }
 
-  return response.json();
+  return await response.json();
 }
 
 async function readScheduleWithSdk() {
