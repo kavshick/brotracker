@@ -18,35 +18,32 @@ function getStorageMode() {
   return `blob-${BLOB_ACCESS}`;
 }
 
-async function readPrivateSchedule() {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5-second timeout
-
-  try {
-    const response = await fetch(PRIVATE_BLOB_URL, {
-      cache: 'no-store',
-      headers: { accept: 'application/json' },
-      signal: controller.signal,
-    });
-
-    if (response.status === 404) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Private blob fetch failed with status ${response.status}`);
-    }
-
-    return await response.json();
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
 async function readScheduleWithSdk() {
   try {
     const blob = await get(BLOB_KEY, { access: BLOB_ACCESS });
-    return JSON.parse(await blob.text());
+    
+    // Handle the response - blob might be a stream or an object
+    if (!blob) {
+      return null;
+    }
+
+    // If it has a text method, it's a readable stream
+    if (typeof blob.text === 'function') {
+      const text = await blob.text();
+      return JSON.parse(text);
+    }
+
+    // Otherwise, assume it's already text or object
+    if (typeof blob === 'object' && blob !== null) {
+      return blob;
+    }
+
+    // It might be just text
+    if (typeof blob === 'string') {
+      return JSON.parse(blob);
+    }
+
+    return null;
   } catch (error) {
     // Blob doesn't exist or other error
     if (error.code === 'BLOB_NOT_FOUND' || error.message?.includes('not found')) {
@@ -68,47 +65,27 @@ async function writeSchedule(schedule) {
 }
 
 async function loadSchedule() {
-  let lastError = null;
-
-  // Try SDK first if using private mode
-  if (BLOB_ACCESS === 'private') {
-    try {
-      console.log('Attempting to load schedule from Blob SDK...');
-      const schedule = await readScheduleWithSdk();
-      if (schedule) {
-        console.log('Successfully loaded schedule from Blob SDK');
-        return schedule;
-      }
-    } catch (error) {
-      console.warn('Failed to load from Blob SDK:', error.message);
-      lastError = error;
-    }
-  }
-
-  // Try private fetch as fallback
-  if (PRIVATE_BLOB_URL) {
-    try {
-      console.log('Attempting to load schedule from private Blob URL...');
-      const schedule = await readPrivateSchedule();
-      if (schedule) {
-        console.log('Successfully loaded schedule from private Blob URL');
-        return schedule;
-      }
-    } catch (error) {
-      console.warn('Failed to load from private Blob URL:', error.message);
-      lastError = error;
-    }
-  }
-
-  // Fall back to default
-  console.log('Blob not found or unreachable, initializing with default schedule');
   try {
-    await writeSchedule(DEFAULT_SCHEDULE);
-  } catch (writeError) {
-    console.error('Failed to initialize Blob with default schedule:', writeError.message);
-  }
+    console.log('Attempting to load schedule from Blob SDK...');
+    const schedule = await readScheduleWithSdk();
+    if (schedule) {
+      console.log('Successfully loaded schedule from Blob SDK');
+      return schedule;
+    }
 
-  return DEFAULT_SCHEDULE;
+    // Blob not found, initialize with default
+    console.log('Blob not found, initializing with default schedule');
+    try {
+      await writeSchedule(DEFAULT_SCHEDULE);
+    } catch (writeError) {
+      console.error('Failed to initialize Blob with default schedule:', writeError.message);
+    }
+    return DEFAULT_SCHEDULE;
+  } catch (error) {
+    console.error('Failed to load from Blob:', error.message);
+    // Fall back to default on any error
+    return DEFAULT_SCHEDULE;
+  }
 }
 
 async function saveSchedule(schedule) {
