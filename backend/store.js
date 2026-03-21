@@ -22,33 +22,47 @@ async function readScheduleWithSdk() {
   try {
     const blob = await get(BLOB_KEY, { access: BLOB_ACCESS });
     
-    // Handle the response - blob might be a stream or an object
     if (!blob) {
+      console.log('Blob is empty or null');
       return null;
     }
 
-    // If it has a text method, it's a readable stream
-    if (typeof blob.text === 'function') {
-      const text = await blob.text();
-      return JSON.parse(text);
-    }
+    let text = null;
 
-    // Otherwise, assume it's already text or object
-    if (typeof blob === 'object' && blob !== null) {
-      return blob;
-    }
-
-    // It might be just text
+    // Try to extract text from blob
     if (typeof blob === 'string') {
-      return JSON.parse(blob);
+      text = blob;
+    } else if (typeof blob.text === 'function') {
+      text = await blob.text();
+    } else if (blob.toString && typeof blob.toString === 'function') {
+      text = blob.toString();
+    } else {
+      console.error('Cannot extract text from blob:', typeof blob);
+      return null;
     }
 
-    return null;
+    // Parse JSON
+    if (typeof text !== 'string' || !text.trim()) {
+      console.error('Blob text is not a valid string');
+      return null;
+    }
+
+    const parsed = JSON.parse(text);
+    
+    // Ensure it's an array
+    if (!Array.isArray(parsed)) {
+      console.error('Blob content is not an array:', typeof parsed);
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
     // Blob doesn't exist or other error
     if (error.code === 'BLOB_NOT_FOUND' || error.message?.includes('not found')) {
+      console.log('Blob not found');
       return null;
     }
+    console.error('Error reading blob:', error.message);
     throw error;
   }
 }

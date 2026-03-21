@@ -8,8 +8,12 @@ module.exports = async function handler(req, res) {
 
   try {
     const schedule = await loadSchedule();
+    
+    // Ensure schedule is always an array
+    const validSchedule = Array.isArray(schedule) ? schedule : [];
+    
     sendJson(res, 200, {
-      schedule,
+      schedule: validSchedule,
       storage: getStorageMode(),
       updatedAt: new Date().toISOString(),
     });
