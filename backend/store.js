@@ -1,6 +1,9 @@
 const { put, get } = require('@vercel/blob');
 
 const BLOB_KEY = 'blob.json';
+const DEFAULT_PUBLIC_BLOB_URL = 'https://vczoykhczwbxmyjc.public.blob.vercel-storage.com/blob.json';
+const BLOB_ACCESS = process.env.BLOB_ACCESS || 'public';
+const PUBLIC_BLOB_URL = process.env.BLOB_PUBLIC_URL || DEFAULT_PUBLIC_BLOB_URL;
 
 const DEFAULT_SCHEDULE = [
   { id: 1, day: 1, dayName: 'Monday', startH: 12, startM: 0, endH: 7, endM: 0, overnight: true, active: true },
@@ -11,24 +14,65 @@ const DEFAULT_SCHEDULE = [
   { id: 6, day: 6, dayName: 'Saturday', startH: 7, startM: 0, endH: 15, endM: 0, overnight: false, active: true },
 ];
 
-let initialized = false;
-
 function getStorageMode() {
-  return 'blob';
+  return `blob-${BLOB_ACCESS}`;
+}
+
+async function readPublicSchedule() {
+  const response = await fetch(PUBLIC_BLOB_URL, {
+    cache: 'no-store',
+    headers: { accept: 'application/json' },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Public blob fetch failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function readScheduleWithSdk() {
+  const blob = await get(BLOB_KEY, { access: BLOB_ACCESS });
+
+  if (!blob || blob.statusCode === 404) {
+    return null;
+  }
+
+  return JSON.parse(await blob.text());
+}
+
+async function writeSchedule(schedule) {
+  await put(BLOB_KEY, JSON.stringify(schedule, null, 2), {
+    access: BLOB_ACCESS,
+    allowOverwrite: true,
+    addRandomSuffix: false,
+    contentType: 'application/json',
+  });
+
+  return schedule;
 }
 
 async function loadSchedule() {
   try {
-    const blob = await get(BLOB_KEY, { access: 'private' });
-    
-    if (!blob) {
+    const schedule = BLOB_ACCESS === 'public' && PUBLIC_BLOB_URL
+      ? await readPublicSchedule()
+      : await readScheduleWithSdk();
+
+    if (!schedule) {
       console.log('Blob not found, initializing with default schedule');
-      await put(BLOB_KEY, JSON.stringify(DEFAULT_SCHEDULE, null, 2), { access: 'private' });
+      try {
+        await writeSchedule(DEFAULT_SCHEDULE);
+      } catch (writeError) {
+        console.error('Failed to initialize Blob with default schedule:', writeError);
+      }
       return DEFAULT_SCHEDULE;
     }
-    
-    const text = await blob.text();
-    return JSON.parse(text);
+
+    return schedule;
   } catch (error) {
     console.error('Failed to load from Blob:', error);
     return DEFAULT_SCHEDULE;
@@ -37,8 +81,7 @@ async function loadSchedule() {
 
 async function saveSchedule(schedule) {
   try {
-    await put(BLOB_KEY, JSON.stringify(schedule, null, 2), { access: 'private' });
-    return schedule;
+    return await writeSchedule(schedule);
   } catch (error) {
     console.error('Failed to save to Blob:', error);
     throw error;
